@@ -14,19 +14,29 @@ function brl(n) {
 }
 
 export default function DashboardCliente({
-  perfil = { nome: 'Visitante', pontos: 0, pontos_acumulados: 0, nivel: 'bronze' },
+  perfil = null,          // o servidor manda null quando não há perfil criado
+  semPerfil = false,      // conta existe no Auth, perfil não — precisa avisar
   ofertas = [], cupons = [], extrato = [], feitoHoje = false, demo = false,
 }) {
-  const nivel = NIVEL_INFO[perfil.nivel] || NIVEL_INFO.bronze
-  const acumulado = Number(perfil.pontos_acumulados || 0)
+  // blindagem: qualquer campo faltando vira valor neutro, nunca quebra a tela
+  const p = perfil || { nome: 'Visitante', pontos: 0, pontos_acumulados: 0, nivel: 'bronze' }
+  const nivel = NIVEL_INFO[p.nivel] || NIVEL_INFO.bronze
+  const acumulado = Number(p.pontos_acumulados || 0)
   const faltam = nivel.prox ? Math.max(0, nivel.prox - acumulado) : 0
   const pct = nivel.prox ? Math.min(100, Math.round((acumulado / nivel.prox) * 100)) : 100
 
   return (
     <>
+      {semPerfil && (
+        <div className="alert err" style={{ marginBottom: 14 }}>
+          Sua conta existe, mas o perfil ainda não foi criado. Recarregue a página;
+          se continuar, avise quem mantém o sistema (rode `diagnostico-cadastro.sql`).
+        </div>
+      )}
+
       <div className="between" style={{ marginBottom: 16 }}>
         <div>
-          <h1>Olá, {(perfil.nome || '').split(' ')[0] || 'jogador'}</h1>
+          <h1>Olá, {(p.nome || '').split(' ')[0] || 'jogador'}</h1>
           <p className="muted small" style={{ margin: 0 }}>Pontalinda · restaurantes e lanchonetes</p>
         </div>
         <span className="badge niv" style={{ color: nivel.cor, borderColor: nivel.cor + '66' }}>
@@ -37,7 +47,7 @@ export default function DashboardCliente({
       <div className="stats">
         <div className="stat">
           <div className="v" style={{ color: 'var(--gold2)' }}>
-            {Number(perfil.pontos || 0).toLocaleString('pt-BR')}
+            {Number(p.pontos || 0).toLocaleString('pt-BR')}
           </div>
           <div className="l">pontos</div>
         </div>
@@ -47,7 +57,7 @@ export default function DashboardCliente({
         </div>
         <div className="stat">
           <div className="v" style={{ fontSize: 16, color: 'var(--ink2)' }}>
-            R$ {brl(Number(perfil.pontos || 0) / 1000)}
+            R$ {brl(Number(p.pontos || 0) / 1000)}
           </div>
           <div className="l">em desconto</div>
         </div>

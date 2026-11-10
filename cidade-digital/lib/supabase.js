@@ -1,10 +1,8 @@
 'use client'
 import { createBrowserClient } from '@supabase/ssr'
+import { supabaseEnv } from './env'
 
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { db: { schema: 'ncd' } }
-  )
+  const { url, key } = supabaseEnv()
+  return createBrowserClient(url, key, { db: { schema: 'ncd' } })
 }

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { temEnvSupabase } from '@/lib/env'
 import { somAcerto, somErro, somFim, aquecerAudio } from '@/lib/som'
 
 const PTS = { 1: 100, 2: 200, 3: 300 }
@@ -9,7 +10,7 @@ const LETRAS = ['A', 'B', 'C', 'D']
 
 export default function Quiz({ perguntas, demo = false }) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = temEnvSupabase() ? createClient() : null
 
   const [i, setI] = useState(0)
   const [marcada, setMarcada] = useState(null)   // resposta escolhida na pergunta atual
@@ -55,7 +56,8 @@ export default function Quiz({ perguntas, demo = false }) {
     } else {
       try {
         // o servidor confere e devolve a correta; a pontuação NÃO é decidida aqui
-        const { data, error } = await supabase.rpc('conferir_resposta', {
+        if (!supabase) throw new Error('Configuracao do Supabase ausente nesta instalacao.')
+      const { data, error } = await supabase.rpc('conferir_resposta', {
           p_pergunta: atual.id,
           p_resposta: idx,
         })
@@ -99,6 +101,7 @@ export default function Quiz({ perguntas, demo = false }) {
         pergunta_id: Number(id), resposta: r,
       }))
       // quem soma os pontos é a função do banco, com o gabarito conferido lá dentro
+      if (!supabase) throw new Error('Configuracao do Supabase ausente nesta instalacao.')
       const { data, error } = await supabase.rpc('submeter_quiz', { p_respostas: payload })
       if (error) throw new Error(error.message)
       setFim(data[0])

@@ -1,11 +1,15 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
+import { temEnvSupabase } from '@/lib/env'
 
-export default function Login() {
+function LoginForm() {
   const router = useRouter()
-  const supabase = createClient()
+  const params = useSearchParams()
+  const confirmado = params.get('confirmado') === '1'
+  const supabase = temEnvSupabase() ? createClient() : null
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
@@ -13,7 +17,9 @@ export default function Login() {
 
   async function entrar(e) {
     e.preventDefault()
-    setErro(''); setCarregando(true)
+    setErro('')
+    if (!supabase) { setErro('Configuracao ausente: veja o aviso acima.'); return }
+    setCarregando(true)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(), password: senha,
@@ -43,6 +49,19 @@ export default function Login() {
           Use o e-mail e a senha da sua conta.
         </p>
 
+        {confirmado && !erro && (
+          <div className="alert ok">
+            E-mail confirmado. Entre com a senha que você cadastrou.
+          </div>
+        )}
+
+        {!supabase && (
+          <div className="alert err">
+            Faltam as variaveis de ambiente (NEXT_PUBLIC_SUPABASE_URL e
+            NEXT_PUBLIC_SUPABASE_ANON_KEY). Configure na Vercel e faca Redeploy.
+          </div>
+        )}
+
         {erro && <div className="alert err">{erro}</div>}
 
         <div className="field">
@@ -65,5 +84,13 @@ export default function Login() {
         </p>
       </form>
     </div>
+  )
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="center"><div className="card auth">Carregando…</div></div>}>
+      <LoginForm />
+    </Suspense>
   )
 }

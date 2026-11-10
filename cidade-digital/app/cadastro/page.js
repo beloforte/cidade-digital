@@ -2,10 +2,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { temEnvSupabase } from '@/lib/env'
 
 export default function Cadastro() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = temEnvSupabase() ? createClient() : null
   const [f, setF] = useState({ nome: '', email: '', whatsapp: '', cpf: '', senha: '', papel: 'cliente' })
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
@@ -14,15 +15,22 @@ export default function Cadastro() {
 
   async function cadastrar(e) {
     e.preventDefault()
-    setErro(''); setCarregando(true)
+    setErro('')
+    if (!supabase) { setErro('Configuracao ausente: veja o aviso acima.'); return }
+    setCarregando(true)
     try {
       if (f.senha.length < 6) throw new Error('A senha precisa ter ao menos 6 caracteres.')
       const cpf = f.cpf.replace(/\D/g, '')
 
+      // emailRedirectTo: sem isso o Supabase manda o link de confirmacao para o
+      // "Site URL" do projeto (que por padrao e http://localhost:3000).
       const { data, error } = await supabase.auth.signUp({
         email: f.email.trim().toLowerCase(),
         password: f.senha,
-        options: { data: { nome: f.nome.trim(), whatsapp: f.whatsapp.trim(), cpf, papel: f.papel } },
+        options: {
+          emailRedirectTo: `${window.location.origin}/login?confirmado=1`,
+          data: { nome: f.nome.trim(), whatsapp: f.whatsapp.trim(), cpf, papel: f.papel },
+        },
       })
       if (error) throw new Error(error.message)
 
@@ -47,6 +55,13 @@ export default function Cadastro() {
         <p className="muted small" style={{ marginTop: 0, marginBottom: 18 }}>
           Pontalinda · restaurantes e lanchonetes
         </p>
+
+        {!supabase && (
+          <div className="alert err">
+            Faltam as variaveis de ambiente (NEXT_PUBLIC_SUPABASE_URL e
+            NEXT_PUBLIC_SUPABASE_ANON_KEY). Configure na Vercel e faca Redeploy.
+          </div>
+        )}
 
         {erro && <div className="alert err">{erro}</div>}
 

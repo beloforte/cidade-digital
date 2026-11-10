@@ -2,7 +2,36 @@ import { getSessao } from '@/lib/supabase-server'
 import DashboardCliente from '@/components/DashboardCliente'
 
 export default async function ClienteHome() {
-  const { supabase, user, perfil } = await getSessao()
+  const s = await getSessao()
+  const { supabase, user } = s
+
+  // CONTA SEM PERFIL: acontece quando o trigger do cadastro não rodou (ou foi
+  // restaurado de um dump sem o trg_novo_usuario). Antes isso quebrava a tela
+  // com "Cannot read properties of null (reading 'nivel')".
+  // Aqui o perfil é criado na hora, com o que veio do cadastro.
+  let perfil = s.perfil
+  if (!perfil && user) {
+    const meta = user.user_metadata || {}
+    const { data: criado } = await supabase
+      .from('usuarios')
+      .upsert({
+        id: user.id,
+        nome: meta.nome || (user.email || '').split('@')[0],
+        email: user.email,
+        whatsapp: meta.whatsapp || null,
+        cpf: (meta.cpf || '').replace(/\D/g, '') || null,
+      }, { onConflict: 'id' })
+      .select()
+      .maybeSingle()
+
+    if (criado) {
+      const papel = meta.papel === 'lojista' ? 'lojista' : 'cliente'
+      await supabase.from('papeis').upsert(
+        { usuario_id: user.id, papel }, { onConflict: 'usuario_id,papel' }
+      )
+      perfil = criado
+    }
+  }
 
   const [{ data: ofertas }, { data: cupons }, { data: extrato }] = await Promise.all([
     supabase.from('ofertas').select('id,titulo,preco,desconto_max_pct,destaque,comercios(nome)')
@@ -24,6 +53,7 @@ export default async function ClienteHome() {
   return (
     <DashboardCliente
       perfil={perfil}
+      semPerfil={!perfil}
       ofertas={ofertas || []}
       cupons={cupons || []}
       extrato={extrato || []}

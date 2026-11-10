@@ -2,11 +2,12 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { temEnvSupabase } from '@/lib/env'
 
 export default function Nav({ papeis = [], nome, demo = false }) {
   const path = usePathname()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = temEnvSupabase() ? createClient() : null
 
   const links = []
   if (demo) {
@@ -23,7 +24,7 @@ export default function Nav({ papeis = [], nome, demo = false }) {
 
   async function sair() {
     if (demo) { window.location.href = '/'; return }
-    await supabase.auth.signOut()
+    if (supabase) await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
   }

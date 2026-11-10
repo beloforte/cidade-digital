@@ -1,11 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { supabaseEnv } from './env'
 
 export function createServerSupabase() {
   const cookieStore = cookies()
+  const { url, key } = supabaseEnv()
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    url,
+    key,
     {
       db: { schema: 'ncd' },
       cookies: {
